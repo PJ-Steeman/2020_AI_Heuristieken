@@ -18,7 +18,7 @@ class Zone:
 class Vehicle:
     def __init__(self, line):
         self.id = line[0]
-        self.zone = "huijjiunuib"
+        self.zone = "test zone"
 
     def __str__(self):
         return self.id
@@ -92,18 +92,18 @@ def readFile(path):
 def writeFile(path, vehicles, reservations):
     file = open(path, "w")
 
-    file.write(str(calculateCost(reservations)))
-    file.write("+Vehicle assignments")
+    file.write(str(calculateCost(reservations)) + "\n")
+    file.write("+Vehicle assignments\n")
     for veh in vehicles:
-        file.write(str(veh) + ";" + veh.zone)
-    file.write("+Assigned requests")
+        file.write(str(veh).rstrip() + ";" + veh.zone + "\n")
+    file.write("+Assigned requests\n")
     for res in reservations:
         if(res.checkSet()):
-            file.write(str(res) + ";" + res.assigned_veh)
-    file.write("+Unassigned requests")
+            file.write(str(res).rstrip() + ";" + res.assigned_veh + "")
+    file.write("+Unassigned requests\n")
     for res in reservations:
         if(not res.checkSet()):
-            file.write(str(res))
+            file.write(str(res) + "\n")
     file.close()
 
 def main():
