@@ -1,11 +1,11 @@
 1000
 +Vehicle assignments
-car0;test zone
-car1;test zone
-car2;test zone
-car3;test zone
-car4;test zone
-car5;test zone
+car0;z2
+car1;z2
+car2;z4
+car3;z0
+car4;z4
+car5;z3
 +Assigned requests
 +Unassigned requests
 req0

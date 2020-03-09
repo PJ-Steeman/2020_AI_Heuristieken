@@ -2,15 +2,23 @@
 
 #TODO:  lees aantal dagen in en check of er niet buiten gereserveerd wordt
 #       Seed voor random number generator
-#       Enters in de output file
 
 import sys
 import time
+import random
 
 class Zone:
     def __init__(self, line):
         self.id = line[0]
         self.adj = line[1].split(",")
+        self.veh = []
+        self.vehNeigh = []
+
+    def setVeh(self, list):
+        self.veh = list
+
+    def setVehNeigh(self, list):
+        self.vehNeigh = list
 
     def __str__(self):
         return self.id
@@ -24,7 +32,7 @@ class Vehicle:
         return self.id
 
     def setZone(self, zone):
-        self.zone = zone
+        self.zone = str(zone)
 
 class Reservation:
     def __init__(self, line):
@@ -106,10 +114,43 @@ def writeFile(path, vehicles, reservations):
             file.write(str(res) + "\n")
     file.close()
 
+def randomZoneAssignment(listVeh, listZone):
+    for veh in listVeh:
+        veh.setZone("z" + str(random.randrange(0, len(listZone))))
+        print(veh.zone)
+
+# def requestAssignment(listVeh, listZone, listRes):
+    # for req in listRes
+
+# def checkCarFree():
+
+def getVehicleInZone(zone, listVeh):
+    listVehInZone = []
+    for veh in listVeh:
+        if(veh.zone == str(zone)):
+            listVehInZone.append(veh)
+    return listVehInZone
+
+def getVehicleInNeighbour(zone):
+    listVehInNeigh = []
+    for zo in zone.adj:
+        listVehInNeigh += zo.veh
+    return listVehInNeigh
+
+def getItem(id, list):
+    for item in list:
+        if(item.id == id):
+            return item
+    return None
+
 def main():
     pathIn = sys.argv[1]
     pathOut = sys.argv[2]
     maxTime = int(sys.argv[3])
+    if(len(sys.argv) > 4):
+        random.seed(sys.argv[4])
+    else:
+        random.seed(None)
 
     print(pathIn)
     print(pathOut)
@@ -121,9 +162,16 @@ def main():
 
     listVeh, listZone, listRes = readFile(pathIn)
 
-    print(listVeh[1])
-
     start_time = time.time()
+
+    randomZoneAssignment(listVeh, listZone)
+
+    for zone in listZone:
+        zone.setVeh(getVehicleInZone(zone, listVeh))
+    for zone in listZone:
+        zone.setVehNeigh(getVehicleInNeighbour(zone))
+
+    print(listVeh[1])
 
     while(time.time() - start_time) < maxTime:
         # OPTIMALISTAIE
