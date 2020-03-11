@@ -185,14 +185,20 @@ def requestAssignment(listZone, listRes):
 def checkCarAvailable(veh, listRes, req):
     if (veh not in req.vehicles):
         return False
+    vehRange = range(req.start, req.start + req.length)
     for fixed in listRes:
         if (veh == fixed.assigned_veh):
-            if (req.start < fixed.start + fixed.lenght) and (req.start + req.lenght > fixed.start):
+            if (req.day != fixed.day):
+                return True
+            fixedRange = range(fixed.start, fixed.start + fixed.length)
+            if (list(set(vehRange) & list(set(fixedRange))) > 1):
                 return False
-            if (req.start + req.lenght > fixed.start) and (req.start + req.lenght < fixed.start + fixed.lenght):
-                return False
-            if (req.start <= fixed.start) and (req.start+ req.lenght > fixed.start + fixed.lenght):
-                return False
+            #if (req.start < fixed.start + fixed.lenght) and (req.start + req.lenght > fixed.start):
+            #    return False
+            #if (req.start + req.lenght > fixed.start) and (req.start + req.lenght < fixed.start + fixed.lenght):
+            #    return False
+            #if (req.start <= fixed.start) and (req.start+ req.lenght > fixed.start + fixed.lenght):
+            #    return False
     return True
 
 def getVehicleInZone(zone, listVeh):
@@ -226,10 +232,6 @@ def main():
     print(pathIn)
     print(pathOut)
     print(maxTime)
-
-    listVeh = []
-    listZone = []
-    listRes = []
 
     listVeh, listZone, listRes = readFile(pathIn)
 
