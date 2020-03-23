@@ -8,6 +8,8 @@ import time
 import random
 import copy
 
+STUCK_VALUE = 20
+
 class Zone:
     def __init__(self):
         self.id = None
@@ -71,8 +73,6 @@ class Reservation:
         self.assigned_veh = vehicle
 
     def calcCost(self):
-        # print(self.checkSet())
-        # print("----------")
         if(self.checkSet()):
             if(self.zone == self.assigned_veh.zone):
                 return 0
@@ -81,7 +81,6 @@ class Reservation:
         return self.p1
 
     def checkSet(self):
-        # OPGEPAST BIJ VERKEERD OUTPUT
         return self.assigned_veh is not None
 
 def calculateCost(resList):
@@ -187,25 +186,18 @@ def requestAssignment(listZone, listRes):
                     request.setVehicle(veh)
                     break
 
-def iteration(listZone, listRes):
+def iteration(listZone, listRes, iteration):
     listBackup = copy.deepcopy(listRes)
     costBefore = (calculateCost(listRes))
     requestAssignment(listZone, listRes)
     costAfter = (calculateCost(listRes))
-    # print(costBefore, costAfter)
 
     if(costBefore < costAfter):
-        # print("slechter", costBefore, costAfter)
-        return listBackup
-    return listRes
-    # for r in listRes:
-    #     print("a:", r.assigned_veh)
-    # for r in listBackup:
-    #     print("b:", r.assigned_veh)
+        return listBackup, 0
 
+    return listRes, iteration + 1
 
 def checkCarAvailable(veh, listRes, req):
-    # print(*req.vehicles)
     if (veh not in req.vehicles):
         return False
     vehRange = range(req.start, req.start + req.lenght)
@@ -215,7 +207,6 @@ def checkCarAvailable(veh, listRes, req):
                 continue
             fixedRange = range(fixed.start, fixed.start + fixed.lenght)
             if (len(list(set(vehRange) & set(fixedRange))) > 1):
-                # print("overlap")
                 return False
     return True
 
@@ -264,14 +255,31 @@ def main():
     for zone in listZone:
         zone.setVehNeigh(getVehicleInNeighbour(zone))
 
+    lastCost = calculateCost(listRes)
+    it = 0
+
     while(time.time() - start_time) < maxTime:
         # OPTIMALISATIE
-        listRes = iteration(listZone, listRes)
+        listRes, it = iteration(listZone, listRes, it)
+        if(it >= STUCK_VALUE):
+            print()
+            print(lastCost, calculateCost(listRes))
+            if(lastCost > calculateCost(listRes)):
+                zoneBackup = copy.deepcopy(listZone)
+                resBackup = copy.deepcopy(listRes)
+                vehBackup = copy.deepcopy(listVeh)
+                lastCost = calculateCost(listRes)
 
-    #print(listVeh)
-    #print(listZone)
-    #print(listRes)
+            randomZoneAssignment(listVeh, listZone)
+            for zone in listZone:
+                zone.setVeh(getVehicleInZone(zone, listVeh))
+            for zone in listZone:
+                zone.setVehNeigh(getVehicleInNeighbour(zone))
 
-    writeFile(pathOut, listVeh, listRes)
+            for res in listRes:
+                res.assigned_veh = None
+            it = 0
+
+    writeFile(pathOut, vehBackup, resBackup)
 
 main()
