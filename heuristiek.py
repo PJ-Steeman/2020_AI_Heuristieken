@@ -8,7 +8,8 @@ import time
 import random
 import copy
 
-STUCK_VALUE = 20
+STUCK_VALUE = 25
+test = 0
 
 class Zone:
     def __init__(self):
@@ -192,7 +193,7 @@ def iteration(listZone, listRes, iteration):
     requestAssignment(listZone, listRes)
     costAfter = (calculateCost(listRes))
 
-    if(costBefore < costAfter):
+    if(costBefore+80 < costAfter):
         return listBackup, 0
 
     return listRes, iteration + 1
@@ -265,9 +266,7 @@ def main():
             print()
             print(lastCost, calculateCost(listRes))
             if(lastCost > calculateCost(listRes)):
-                zoneBackup = copy.deepcopy(listZone)
-                resBackup = copy.deepcopy(listRes)
-                vehBackup = copy.deepcopy(listVeh)
+                writeFile(pathOut, listVeh, listRes)
                 lastCost = calculateCost(listRes)
 
             randomZoneAssignment(listVeh, listZone)
@@ -280,6 +279,6 @@ def main():
                 res.assigned_veh = None
             it = 0
 
-    writeFile(pathOut, vehBackup, resBackup)
+
 
 main()
