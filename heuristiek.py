@@ -6,6 +6,7 @@
 import sys
 import time
 import random
+import copy
 
 class Zone:
     def __init__(self):
@@ -70,8 +71,8 @@ class Reservation:
         self.assigned_veh = vehicle
 
     def calcCost(self):
-        print(self.checkSet())
-        print("----------")
+        # print(self.checkSet())
+        # print("----------")
         if(self.checkSet()):
             if(self.zone == self.assigned_veh.zone):
                 return 0
@@ -187,15 +188,25 @@ def requestAssignment(listZone, listRes):
                     break
 
 def iteration(listZone, listRes):
+    listBackup = copy.deepcopy(listRes)
     costBefore = (calculateCost(listRes))
     requestAssignment(listZone, listRes)
     costAfter = (calculateCost(listRes))
+    # print(costBefore, costAfter)
+
+    if(costBefore < costAfter):
+        # print("slechter", costBefore, costAfter)
+        return listBackup
+    return listRes
+    # for r in listRes:
+    #     print("a:", r.assigned_veh)
+    # for r in listBackup:
+    #     print("b:", r.assigned_veh)
 
 
 def checkCarAvailable(veh, listRes, req):
-    print(*req.vehicles)
+    # print(*req.vehicles)
     if (veh not in req.vehicles):
-        print("veh mag niet aan req toegeweze worden")
         return False
     vehRange = range(req.start, req.start + req.lenght)
     for fixed in listRes:
@@ -203,8 +214,8 @@ def checkCarAvailable(veh, listRes, req):
             if (req.day != fixed.day):
                 continue
             fixedRange = range(fixed.start, fixed.start + fixed.lenght)
-            if (list(set(vehRange) & list(set(fixedRange))) > 1):
-                print("overlap")
+            if (len(list(set(vehRange) & set(fixedRange))) > 1):
+                # print("overlap")
                 return False
     return True
 
@@ -253,11 +264,9 @@ def main():
     for zone in listZone:
         zone.setVehNeigh(getVehicleInNeighbour(zone))
 
-    requestAssignment(listZone, listRes)
-
     while(time.time() - start_time) < maxTime:
         # OPTIMALISATIE
-        print("ok")
+        listRes = iteration(listZone, listRes)
 
     #print(listVeh)
     #print(listZone)
