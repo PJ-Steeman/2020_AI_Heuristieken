@@ -33,7 +33,7 @@ class Vehicle:
         self.zone = None
 
     def setInit(self, line):
-        self.id = line[0]
+        self.id = line[0].rstrip("\n\r")
 
     def __str__(self):
         return self.id
@@ -153,7 +153,7 @@ def writeFile(path, vehicles, reservations):
     file.write("+Assigned requests\n")
     for res in reservations:
         if(res.checkSet()):
-            file.write(str(res).rstrip() + ";" + str(res.assigned_veh) + "")
+            file.write(str(res).rstrip() + ";" + str(res.assigned_veh) + "\n")
     file.write("+Unassigned requests\n")
     for res in reservations:
         if(not res.checkSet()):
@@ -170,35 +170,42 @@ def requestAssignment(listZone, listRes):
 
     found = False
 
-    for veh in random.shuffle(request.zone.veh):
-        if(checkCarAvailable(car, listRes, req)):
-            request.setVehicle(veh)
-            found = True
-            break
-
-    if not found:
-        for veh in random.shuffle(request.zone.vehNeigh):
-            if(checkCarAvailable(car, listRes, req)):
+    if(len(request.zone.veh) != 0):
+        random.shuffle(request.zone.veh)
+        for veh in request.zone.veh:
+            if(checkCarAvailable(veh, listRes, request)):
                 request.setVehicle(veh)
+                found = True
                 break
 
+    if(len(request.zone.vehNeigh) != 0):
+        if not found:
+            random.shuffle(request.zone.vehNeigh)
+            for veh in request.zone.vehNeigh:
+                if(checkCarAvailable(veh, listRes, request)):
+                    request.setVehicle(veh)
+                    break
+
+def iteration(listZone, listRes):
+    costBefore = (calculateCost(listRes))
+    requestAssignment(listZone, listRes)
+    costAfter = (calculateCost(listRes))
+
+
 def checkCarAvailable(veh, listRes, req):
+    print(*req.vehicles)
     if (veh not in req.vehicles):
+        print("veh mag niet aan req toegeweze worden")
         return False
-    vehRange = range(req.start, req.start + req.length)
+    vehRange = range(req.start, req.start + req.lenght)
     for fixed in listRes:
         if (veh == fixed.assigned_veh):
             if (req.day != fixed.day):
-                return True
-            fixedRange = range(fixed.start, fixed.start + fixed.length)
+                continue
+            fixedRange = range(fixed.start, fixed.start + fixed.lenght)
             if (list(set(vehRange) & list(set(fixedRange))) > 1):
+                print("overlap")
                 return False
-            #if (req.start < fixed.start + fixed.lenght) and (req.start + req.lenght > fixed.start):
-            #    return False
-            #if (req.start + req.lenght > fixed.start) and (req.start + req.lenght < fixed.start + fixed.lenght):
-            #    return False
-            #if (req.start <= fixed.start) and (req.start+ req.lenght > fixed.start + fixed.lenght):
-            #    return False
     return True
 
 def getVehicleInZone(zone, listVeh):
@@ -221,6 +228,9 @@ def getItem(id, list):
     return None
 
 def main():
+
+    start_time = time.time()
+
     pathIn = sys.argv[1]
     pathOut = sys.argv[2]
     maxTime = int(sys.argv[3])
@@ -235,19 +245,18 @@ def main():
 
     listVeh, listZone, listRes = readFile(pathIn)
 
-    start_time = time.time()
-
     randomZoneAssignment(listVeh, listZone)
 
     for zone in listZone:
         zone.setVeh(getVehicleInZone(zone, listVeh))
-        # print(len(zone.veh))
+
     for zone in listZone:
         zone.setVehNeigh(getVehicleInNeighbour(zone))
-        # print(len(zone.vehNeigh))
+
+    requestAssignment(listZone, listRes)
 
     while(time.time() - start_time) < maxTime:
-        # OPTIMALISTAIE
+        # OPTIMALISATIE
         print("ok")
 
     #print(listVeh)
