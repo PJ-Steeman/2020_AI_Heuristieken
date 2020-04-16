@@ -231,6 +231,8 @@ def randomAssignment(listZone, listRes, listVeh, randomAssigList = None):
     for zone in listZone:
         zone.setVehNeigh(getVehicleInNeighbour(zone))
 
+    return listZone, listRes, listVeh
+
 # Vervult zo veel mogelijk request
 def requestFiller(listZone, listRes):
     # Bepaal een random volgorde om de requests te vervullen
@@ -269,28 +271,20 @@ def randomChange(listRes, listZone, listVeh):
         # Unassign een request
         listZone, listRes = requestUnassignment(listZone, listRes)
         listZone, listRes = requestFiller(listZone, listRes)
-        return True, listRes, listZone, listVeh
-    if (i >= 2):
-        # Assign wagen aan andere zone
-        listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
-        listZone, listRes = requestFiller(listZone, listRes)
-        return True, listRes, listZone, listVeh
+    return True, listRes, listZone, listVeh
+    # if (i >= 2):
+    #     # Assign wagen aan andere zone
+    #     listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
+    #     listZone, listRes = requestFiller(listZone, listRes)
+    #     return True, listRes, listZone, listVeh
 
 def zoneReassignment(listZone, listRes, listVeh):
     veh = listVeh[random.randrange(0, len(listVeh))]
-    randomAssignment(listZone, listRes, listVeh, [veh])
-    veh.setZone(listZone[random.randrange(0, len(listZone))])
-
-    for zone in listZone:
-        zone.setVeh(getVehicleInZone(zone, listVeh))
-
-    for zone in listZone:
-        zone.setVehNeigh(getVehicleInNeighbour(zone))
+    listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh, [veh])
 
     for res in listRes:
-        if res.assigned_veh == veh:
-            if not(veh in res.zone.veh or veh in res.zone.vehNeigh):
-                res.setVehicle(None)
+        if str(res.assigned_veh) == str(veh):
+            res.setVehicle(None)
 
     return listZone, listRes, listVeh
 
@@ -324,7 +318,7 @@ def main():
     print("Tijd gebruikt om file in te lezen: " + str(read_time) + " sec.")
 
     # Maak een initiële oplossing (volledig random)
-    randomAssignment(listZone, listRes, listVeh)
+    listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
 
     best_cost = calculateCost(listRes)
 
