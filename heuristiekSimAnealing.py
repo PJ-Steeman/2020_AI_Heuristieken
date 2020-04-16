@@ -6,10 +6,10 @@ import random
 import copy
 import math
 
-MAX_ITERATIONS = 100
-MAX_T = 750
-MIN_T = 5
-ALPHA = 0.7
+MAX_ITERATIONS = 1000
+MAX_T = 5000
+MIN_T = 10
+ALPHA = 0.65
 
 # ---------------------- Klasses ---------------------- #
 class Zone:
@@ -351,8 +351,8 @@ def main():
 
                     # Als de nieuwe oplossing beter is of gelukt heeft werken we er op verder
                     if (dE <= 0) or (math.exp((-dE)/T) > random.random()):
-                        if(dE != 0):
-                            print("verbetering op iteratie " + str(it) + "   -----   van " + str(best_cost) + " naar " + str(current_cost))
+                        # if(dE != 0):
+                        #     print("verbetering op iteratie " + str(it) + "   -----   van " + str(best_cost) + " naar " + str(current_cost))
                         best_cost = current_cost
                         zoneBackup = copy.deepcopy(listZone)
                         resBackup = copy.deepcopy(listRes)
@@ -366,7 +366,7 @@ def main():
 
             T = ALPHA * T
             print (T)
-
+    print(best_cost)
     writeFile(pathOut, vehBackup, resBackup)
 
 main()
