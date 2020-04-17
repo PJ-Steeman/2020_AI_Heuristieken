@@ -9,10 +9,10 @@ import random
 import copy
 import math
 
-MAX_ITERATIONS = 500
-MAX_T = 5000
-MIN_T = 15
-ALPHA = 0.7
+MAX_ITERATIONS = 750
+MAX_T = 750
+MIN_T = 20
+ALPHA = 0.70
 
 # ---------------------- Klasses ---------------------- #
 class Zone:
@@ -78,9 +78,9 @@ class Reservation:
     def setVehicle(self, vehicle):
         self.assigned_veh = vehicle
 
-    def calcCost(self):
+    def calcCost(self, listVeh):
         if(self.checkSet()):
-            if(self.zone == self.assigned_veh.zone):
+            if(self.zone == getItem(self.assigned_veh, listVeh).zone):
                 return 0
             else:
                 return self.p2
@@ -127,24 +127,13 @@ def readFile(path):
 
             if(listIdent == 1):
                 splitLine = line.split(";")
-                splitItems = splitLine[1].split(",")
-                place = "".join(splitItems)
-                zones = place.split("z")[1:]
-                tempList = []
-                for zone in zones:
-                    tempList.append(zoneList[int(zone)])
-
-                zoneList[follower].setInit(splitLine[0], tempList)
+                splitItems = splitLine[1].rstrip("\n\r").split(",")
+                zoneList[follower].setInit(splitLine[0], splitItems)
 
             if(listIdent == 2):
                 vehList[follower].setInit(line.split(";"))
 
             follower += 1
-
-    for res in resList:
-        res.zone = getItem(res.zone, zoneList)
-        for id, veh in enumerate(res.vehicles):
-            res.vehicles[id] = getItem(veh, vehList)
 
     file.close()
     return vehList, zoneList, resList
@@ -153,18 +142,18 @@ def writeFile(path, vehicles, reservations):
     file = open(path, "w")
 
     # Schrijf de beste cost weg
-    file.write(str(calculateCost(reservations)) + "\n")
+    file.write(str(calculateCost(reservations, vehicles)) + "\n")
 
     # Schrijf alle voertuig toewizingen weg
     file.write("+Vehicle assignments\n")
     for veh in vehicles:
-        file.write(str(veh).rstrip() + ";" + str(veh.zone) + "\n")
+        file.write(str(veh).rstrip() + ";" + veh.zone + "\n")
 
     # Schrijf alle vervulde requests weg
     file.write("+Assigned requests\n")
     for res in reservations:
         if(res.checkSet()):
-            file.write(str(res).rstrip() + ";" + str(res.assigned_veh) + "\n")
+            file.write(str(res).rstrip() + ";" + res.assigned_veh + "\n")
 
     # Schrijf alle niet vervulde requests weg
     file.write("+Unassigned requests\n")
@@ -175,34 +164,35 @@ def writeFile(path, vehicles, reservations):
 
 # ---------------------- Hulp Functies ---------------------- #
 # Geeft een lijst van de wagens in die zone terug
-def getVehicleInZone(zone, listVeh):
+def getVehicleInZone(zone, listVeh, listZone):
     listVehInZone = []
     for veh in listVeh:
-        if(veh.zone == zone):
-            listVehInZone.append(veh)
+        if(veh.zone == str(zone)):
+            listVehInZone.append(str(veh))
     return listVehInZone
 
 # Geeft een lijst van de wagens in de buurzone's terug
-def getVehicleInNeighbour(zone):
+def getVehicleInNeighbour(zone, listZone):
     listVehInNeigh = []
     for zo in zone.adj:
-        listVehInNeigh += zo.veh
+        listVehInNeigh.append(getItem(zo, listZone).veh)
     return listVehInNeigh
 
 # Berekent de totale kost van een oplossing
-def calculateCost(resList):
+def calculateCost(resList, listVeh):
     cost = 0
     for res in resList:
-        cost += res.calcCost()
+        cost += res.calcCost(listVeh)
     return cost
 
 # Controleert of een wagen op dat een bepaald tijdstip en in die zone vrij is
 def checkCarAvailable(veh, listRes, req):
-    if (veh not in req.vehicles):
+
+    if (str(veh) not in req.vehicles):
         return False
     vehRange = range(req.start, req.start + req.lenght)
     for fixed in listRes:
-        if (veh == fixed.assigned_veh):
+        if (str(veh) == fixed.assigned_veh):
             if (req.day != fixed.day):
                 continue
             fixedRange = range(fixed.start, fixed.start + fixed.lenght)
@@ -224,19 +214,22 @@ def randomAssignment(listZone, listRes, listVeh, randomAssigList = None):
 
     for veh in randomAssigList:
         vehFromList = getItem(str(veh), listVeh)
-        vehFromList.setZone(listZone[random.randrange(0, len(listZone))])
+        vehFromList.setZone(str(listZone[random.randrange(0, len(listZone))]))
         # print(str(veh) + " staat in zone " + str(veh.zone))
 
     for zone in listZone:
-        zone.setVeh(getVehicleInZone(zone, listVeh))
+        zone.setVeh(getVehicleInZone(zone, listVeh, listRes))
+        # print(getVehicleInZone(zone, listVeh, listRes))
 
     for zone in listZone:
-        zone.setVehNeigh(getVehicleInNeighbour(zone))
+        zone.setVehNeigh(getVehicleInNeighbour(zone, listZone))
+
+    # print(listZone[0].veh + listZone[1].veh + listZone[2].veh)
 
     return listZone, listRes, listVeh
 
 # Vervult zo veel mogelijk request
-def requestFiller(listZone, listRes):
+def requestFiller(listZone, listRes, listVeh):
     # Bepaal een random volgorde om de requests te vervullen
     shuffeledList = list(range(len(listRes)))
     random.shuffle(shuffeledList)
@@ -247,22 +240,23 @@ def requestFiller(listZone, listRes):
         if listRes[r_id].assigned_veh == None:
 
             # Kijk eerst of er nog een auto binnen de zone vrij is
-            if(len(listRes[r_id].zone.veh) != 0):
-                random.shuffle(listRes[r_id].zone.veh)
-                for veh in listRes[r_id].zone.veh:
+            # print(getItem(listRes[r_id].zone, listZone).veh)
+            if(len(getItem(listRes[r_id].zone, listZone).veh) != 0):
+                random.shuffle(getItem(listRes[r_id].zone, listZone).veh)
+                for veh in getItem(listRes[r_id].zone, listZone).veh:
                     if(checkCarAvailable(veh, listRes, listRes[r_id])):
-                        listRes[r_id].setVehicle(veh)
+                        listRes[r_id].setVehicle(str(veh))
                         # print("assigned - 1")
                         found = True
                         break
 
             # Kijk of er een auto bij een van de buren vrij is
-            if(len(listRes[r_id].zone.vehNeigh) != 0):
+            if(len(getItem(listRes[r_id].zone, listZone).vehNeigh) != 0):
                 if not found:
-                    random.shuffle(listRes[r_id].zone.vehNeigh)
-                    for veh in listRes[r_id].zone.vehNeigh:
+                    random.shuffle(getItem(listRes[r_id].zone, listZone).vehNeigh)
+                    for veh in getItem(listRes[r_id].zone, listZone).vehNeigh:
                         if(checkCarAvailable(veh, listRes, listRes[r_id])):
-                            listRes[r_id].setVehicle(veh)
+                            listRes[r_id].setVehicle(str(veh))
                             # print("assigned - 2")
                             break
 
@@ -274,27 +268,21 @@ def randomChange(listRes, listZone, listVeh):
     if (i < 2):
         # Unassign een request
         listZone, listRes = requestUnassignment(listZone, listRes)
-        listZone, listRes = requestFiller(listZone, listRes)
+        listZone, listRes = requestFiller(listZone, listRes, listVeh)
     if (i >= 2):
         # Assign wagen aan andere zone
         listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
-        listZone, listRes = requestFiller(listZone, listRes)
+        listZone, listRes = requestFiller(listZone, listRes, listVeh)
     return True, listRes, listZone, listVeh
 
 def zoneReassignment(listZone, listRes, listVeh):
     veh = listVeh[random.randrange(0, len(listVeh))]
 
     for res in listRes:
-        if res.assigned_veh == veh:
+        if str(res.assigned_veh) == str(veh):
             res.setVehicle(None)
-            # print(str(res))
 
-    # print(str(veh.zone))
     listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh, [veh])
-
-    # print(str(veh))
-    # print(str(veh.zone))
-
 
     return listZone, listRes, listVeh
 
@@ -304,7 +292,7 @@ def requestUnassignment(listZone, listRes):
     return listZone, listRes
 
 # ---------------------- SOLVER ---------------------- #
-def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed):
+def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed, pathOut):
 
     total_best_cost = None
     total_best_zone = None
@@ -318,74 +306,60 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed):
 
     stop = False
 
-    while not stop:
+    try:
+        while not stop:
 
-        # Backups maken waar uiteindelijk de best oplossing in zal komen
-        zoneBackup = listZone
-        resBackup = copy.deepcopy(listRes)
-        vehBackup = copy.deepcopy(listVeh)
+            # Backups maken waar uiteindelijk de best oplossing in zal komen
+            zoneBackup = copy.deepcopy(listZone)
+            resBackup = copy.deepcopy(listRes)
+            vehBackup = copy.deepcopy(listVeh)
 
-        for res in resBackup:
-            res.zone = getItem(str(res.zone), zoneBackup)
-            for id, veh in enumerate(res.vehicles):
-                res.vehicles[id] = getItem(str(veh), vehBackup)
+            # Maak een initiële oplossing (volledig random)
+            listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
 
-        # Maak een initiële oplossing (volledig random)
-        listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
+            # initiële random toewijzing van requests
+            listZone, listRes = requestFiller(listZone, listRes, listVeh)
 
-        # initiële random toewijzing van requests
-        listZone, listRes = requestFiller(listZone, listRes)
+            best_cost = calculateCost(listRes, listVeh)
 
-        best_cost = calculateCost(listRes)
+            T = MAX_T
 
-        T = MAX_T
-
-        try:
             # Simulated annealing
             while T >= MIN_T:
                 for it in range(MAX_ITERATIONS):
                     # Voer een verandering uit
                     changeWorked, listRes, listZone, listVeh = randomChange(listRes, listZone, listVeh)
                     if(changeWorked):
-                        current_cost = calculateCost(listRes)
+                        current_cost = calculateCost(listRes, listVeh)
                         dE = current_cost - best_cost
 
                         # Als de nieuwe oplossing beter is of gelukt heeft werken we er op verder
                         if (dE <= 0) or (math.exp((-dE)/T) > random.random()):
                             best_cost = current_cost
-                            zoneBackup = listZone
-                            resBackup = listRes
-                            vehBackup = listVeh
-
-                            for res in resBackup:
-                                res.zone = getItem(str(res.zone), zoneBackup)
-                                for id, veh in enumerate(res.vehicles):
-                                    res.vehicles[id] = getItem(str(veh), vehBackup)
+                            zoneBackup = copy.deepcopy(listZone)
+                            resBackup = copy.deepcopy(listRes)
+                            vehBackup = copy.deepcopy(listVeh)
 
                         # Als er geen verbetering is en de oplossing heeft geen geluk, zullen we verdergaan van onze laatster beste oplossing
                         else:
-                            listZone = zoneBackup
-                            listRes = resBackup
-                            listVeh = vehBackup
-
-                            for res in listRes:
-                                res.zone = getItem(str(res.zone), listZone)
-                                for id, veh in enumerate(res.vehicles):
-                                    res.vehicles[id] = getItem(str(veh), listVeh)
+                            listZone = copy.deepcopy(zoneBackup)
+                            listRes = copy.deepcopy(resBackup)
+                            listVeh = copy.deepcopy(vehBackup)
 
                 T = ALPHA * T
+                print(T)
 
-        except (KeyboardInterrupt):
-            stop = True
+            if (total_best_cost is None or best_cost < total_best_cost):
+                print("verbetering van " + str(total_best_cost) + " naar " + str(best_cost))
+                total_best_cost = best_cost
+                total_best_res = copy.deepcopy(listRes)
+                total_best_zone = copy.deepcopy(listZone)
+                total_best_veh = copy.deepcopy(listVeh)
 
-        if (total_best_cost is None or best_cost < total_best_cost):
-            print("verbetering van " + str(total_best_cost) + " naar " + str(best_cost))
-            total_best_cost = best_cost
-            total_best_res = copy.deepcopy(listRes)
-            total_best_zone = copy.deepcopy(listZone)
-            total_best_veh = copy.deepcopy(listVeh)
+                writeFile(pathOut, total_best_veh, total_best_res)
 
-            queue.put((total_best_cost, total_best_res, total_best_zone, total_best_veh))
+    except (KeyboardInterrupt):
+        pass
 
 # ---------------------- MAIN ---------------------- #
 def main():
@@ -412,13 +386,13 @@ def main():
 
     # Maak een queue voode communicatie met de main en maak de verschillende threads
     queue = multiprocessing.Queue()
-    threads = [multiprocessing.Process(target = solver, args=(queue, listZone, listRes, listVeh, int(sys.argv[4]) * i)) for i in range (max_thread)]
+    threads = [multiprocessing.Process(target = solver, args=(queue, listZone, listRes, listVeh, int(sys.argv[4]) * (i+1), pathOut+str(i))) for i in range (max_thread)]
 
     for t in threads:
         t.start()
 
     # Kill de threads iets voor de tijd verlopen is
-    sleep_time = max_time - 4 * read_time
+    sleep_time = max_time - 4 * read_time - .5
 
     if(sleep_time < 0):
         sleep_time = 60*60
@@ -432,13 +406,31 @@ def main():
         os.kill(t.pid, signal.SIGINT)
 
     # Haal alle oplossingen op
-    solutions = [queue.get() for _ in range(queue.qsize())]
 
-    # Bepaal de beste oplossing en output deze
-    best_cost, best_listRes, best_listZone, best_listVeh = min(solutions, key=lambda x: x[0])
+    fileList = [pathOut+str(i) for i in range(max_thread)]
+    scoreList = []
 
-    print(" --------------------- BESTE OPLOSING: " + str(best_cost) + " --------------------- ")
-    writeFile(pathOut, best_listVeh, best_listRes)
+    for f in fileList:
+        file = open(f)
+        scoreList.append(int(file.readline().rstrip("\n\r")))
+        file.close()
+
+    print("rename: " + fileList[scoreList.index(min(scoreList))])
+    try:
+        os.remove(pathOut)
+    except:
+        pass
+    os.rename(fileList[scoreList.index(min(scoreList))], pathOut)
+
+    for file in fileList:
+        print("remove: " + file)
+        try:
+            os.remove(file)
+        except:
+            pass
+
+    print(" --------------------- BESTE OPLOSING: " + str(min(scoreList)) + " --------------------- ")
+    print(" --------------------- TOTALE DUUR: " + str(time.time() - start_time) + " --------------------- ")
 
 if __name__ == '__main__':
     main()
