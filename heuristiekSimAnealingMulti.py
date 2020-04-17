@@ -274,20 +274,26 @@ def randomChange(listRes, listZone, listVeh):
         # Unassign een request
         listZone, listRes = requestUnassignment(listZone, listRes)
         listZone, listRes = requestFiller(listZone, listRes)
+    if (i >= 2):
+        # Assign wagen aan andere zone
+        listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
+        listZone, listRes = requestFiller(listZone, listRes)
     return True, listRes, listZone, listVeh
-    # if (i >= 2):
-    #     # Assign wagen aan andere zone
-    #     listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
-    #     listZone, listRes = requestFiller(listZone, listRes)
-    #     return True, listRes, listZone, listVeh
 
 def zoneReassignment(listZone, listRes, listVeh):
     veh = listVeh[random.randrange(0, len(listVeh))]
-    listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh, [veh])
 
     for res in listRes:
-        if str(res.assigned_veh) == str(veh):
+        if res.assigned_veh == veh:
             res.setVehicle(None)
+            # print(str(res))
+
+    # print(str(veh.zone))
+    listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh, [veh])
+
+    # print(str(veh))
+    # print(str(veh.zone))
+
 
     return listZone, listRes, listVeh
 
@@ -297,25 +303,25 @@ def requestUnassignment(listZone, listRes):
     return listZone, listRes
 
 # ---------------------- SOLVER ---------------------- #
-def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh):
+def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed):
 
     total_best_cost = None
     total_best_zone = None
     total_best_res = None
     total_best_veh = None
 
+    if(int(sys.argv[4]) != 0):
+        random.seed(seed)
+    else:
+        random.seed(None)
+
     stop = False
 
     while not stop:
-        # Maak een initiële oplossing (volledig random)
-        listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
 
         best_cost = calculateCost(listRes)
 
         T = MAX_T
-
-        # initiële random toewijzing van requests
-        listZone, listRes = requestFiller(listZone, listRes)
 
         # Backups maken waar uiteindelijk de best oplossing in zal komen
         zoneBackup = copy.deepcopy(listZone)
@@ -350,8 +356,6 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh):
         except (KeyboardInterrupt):
             stop = True
 
-        print(best_cost)
-
         if (total_best_cost is None or best_cost < total_best_cost):
             print("verbetering van " + str(total_best_cost) + " naar " + str(best_cost))
             total_best_cost = best_cost
@@ -360,7 +364,6 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh):
             total_best_veh = copy.deepcopy(listVeh)
 
             queue.put((total_best_cost, total_best_res, total_best_zone, total_best_veh))
-            print("TBC putter" + str(total_best_cost))
 
 # ---------------------- MAIN ---------------------- #
 def main():
@@ -372,12 +375,6 @@ def main():
     pathOut = sys.argv[2]
     max_time = int(sys.argv[3])
 
-    # Als er een seed wordt meegegeven, gebruik hem. Anders wordt een random seed gebruikt
-    if(len(sys.argv) > 4):
-        random.seed(sys.argv[4])
-    else:
-        random.seed(None)
-
     if(len(sys.argv) == 6):
         max_thread = int(sys.argv[5])
     else:
@@ -388,12 +385,27 @@ def main():
     # Het inlezen van de inpufile en in een lijst van objecten zetten
     listVeh, listZone, listRes = readFile(pathIn)
 
+    # Maak een initiële oplossing (volledig random)
+    listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
+
+    # initiële random toewijzing van requests
+    listZone, listRes = requestFiller(listZone, listRes)
+
     read_time = time.time() - start_time
     print("Tijd gebruikt om file in te lezen: " + str(read_time) + " sec.")
 
+    # listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
+    # listZone, listRes = requestFiller(listZone, listRes)
+    #
+    # for i in range(1000):
+    #
+    #     listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
+    #     listZone, listRes = requestFiller(listZone, listRes)
+    # writeFile(pathOut, listVeh, listRes)
+
     # Maak een queue voode communicatie met de main en maak de verschillende threads
     queue = multiprocessing.Queue()
-    threads = [multiprocessing.Process(target = solver, args=(queue, listZone, listRes, listVeh)) for i in range (max_thread)]
+    threads = [multiprocessing.Process(target = solver, args=(queue, copy.deepcopy(listZone), copy.deepcopy(listRes), copy.deepcopy(listVeh), int(sys.argv[4]) * i)) for i in range (max_thread)]
 
     for t in threads:
         t.start()
@@ -415,13 +427,10 @@ def main():
     # Haal alle oplossingen op
     solutions = [queue.get() for _ in range(queue.qsize())]
 
-    for id, s in enumerate(solutions):
-        print(str(id) + " --- " + str(s[0]))
-
     # Bepaal de beste oplossing en output deze
     best_cost, best_listRes, best_listZone, best_listVeh = min(solutions, key=lambda x: x[0])
 
-    print(best_cost)
+    print(" --------------------- BESTE OPLOSING: " + str(best_cost) + " --------------------- ")
     writeFile(pathOut, best_listVeh, best_listRes)
 
 if __name__ == '__main__':
