@@ -223,7 +223,6 @@ def randomAssignment(listZone, listRes, listVeh, randomAssigList = None):
 
     for veh in randomAssigList:
         veh.setZone(listZone[random.randrange(0, len(listZone))])
-        # print(str(veh) + " staat in zone " + str(veh.zone))
 
     for zone in listZone:
         zone.setVeh(getVehicleInZone(zone, listVeh))
@@ -271,12 +270,12 @@ def randomChange(listRes, listZone, listVeh):
         # Unassign een request
         listZone, listRes = requestUnassignment(listZone, listRes)
         listZone, listRes = requestFiller(listZone, listRes)
-    return True, listRes, listZone, listVeh
-    # if (i >= 2):
-    #     # Assign wagen aan andere zone
-    #     listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
-    #     listZone, listRes = requestFiller(listZone, listRes)
-    #     return True, listRes, listZone, listVeh
+        return True, listRes, listZone, listVeh
+    if (i >= 2):
+        # Assign wagen aan andere zone
+        listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
+        listZone, listRes = requestFiller(listZone, listRes)
+        return True, listRes, listZone, listVeh
 
 def zoneReassignment(listZone, listRes, listVeh):
     veh = listVeh[random.randrange(0, len(listVeh))]

@@ -141,20 +141,15 @@ def readFile(path):
 
             follower += 1
 
-    # De id's van de objecten van string vorm omzetten naar echte objecten
-    # Dit kan pas achteraf omdat men in het begin nog niet weet hoeveel objecten er van elke klasse zullen zijn
     for res in resList:
         res.zone = getItem(res.zone, zoneList)
         for id, veh in enumerate(res.vehicles):
             res.vehicles[id] = getItem(veh, vehList)
 
     file.close()
-    return [zoneList, resList, vehList]
+    return vehList, zoneList, resList
 
-def writeFile(path, dataList):
-    reservations = dataList[1]
-    vehicle = dataList[2]
-
+def writeFile(path, vehicles, reservations):
     file = open(path, "w")
 
     # Schrijf de beste cost weg
@@ -180,9 +175,7 @@ def writeFile(path, dataList):
 
 # ---------------------- Hulp Functies ---------------------- #
 # Geeft een lijst van de wagens in die zone terug
-def getVehicleInZone(zone, dataList):
-    listVeh = dataList[2]
-
+def getVehicleInZone(zone, listVeh):
     listVehInZone = []
     for veh in listVeh:
         if(veh.zone == zone):
@@ -197,18 +190,14 @@ def getVehicleInNeighbour(zone):
     return listVehInNeigh
 
 # Berekent de totale kost van een oplossing
-def calculateCost(dataList):
-    resList = dataList[1]
-
+def calculateCost(resList):
     cost = 0
     for res in resList:
         cost += res.calcCost()
     return cost
 
 # Controleert of een wagen op dat een bepaald tijdstip en in die zone vrij is
-def checkCarAvailable(veh, dataList, req):
-    listRes = dataList[1]
-
+def checkCarAvailable(veh, listRes, req):
     if (veh not in req.vehicles):
         return False
     vehRange = range(req.start, req.start + req.lenght)
@@ -229,11 +218,7 @@ def getItem(id, list):
     return None
 # ---------------------- Toewijzings Functies ---------------------- #
 # Geeft aan alle auto's in de randomAssigList een random zone en past de auto lijsten in de zone en zijn buren aan
-def randomAssignment(dataList, randomAssigList = None):
-    listZone = dataList[0]
-    listRes = dataList[1]
-    listVeh = dataList[2]
-
+def randomAssignment(listZone, listRes, listVeh, randomAssigList = None):
     if(randomAssigList == None):
         randomAssigList = listVeh
 
@@ -242,18 +227,15 @@ def randomAssignment(dataList, randomAssigList = None):
         # print(str(veh) + " staat in zone " + str(veh.zone))
 
     for zone in listZone:
-        zone.setVeh(getVehicleInZone(zone, dataList))
+        zone.setVeh(getVehicleInZone(zone, listVeh))
 
     for zone in listZone:
         zone.setVehNeigh(getVehicleInNeighbour(zone))
 
-    return [listZone, listRes, listVeh]
+    return listZone, listRes, listVeh
 
 # Vervult zo veel mogelijk request
-def requestFiller(dataList):
-    listZone = dataList[0]
-    listRes = dataList[1]
-
+def requestFiller(listZone, listRes):
     # Bepaal een random volgorde om de requests te vervullen
     shuffeledList = list(range(len(listRes)))
     random.shuffle(shuffeledList)
@@ -267,7 +249,7 @@ def requestFiller(dataList):
             if(len(listRes[r_id].zone.veh) != 0):
                 random.shuffle(listRes[r_id].zone.veh)
                 for veh in listRes[r_id].zone.veh:
-                    if(checkCarAvailable(veh, dataList, listRes[r_id])):
+                    if(checkCarAvailable(veh, listRes, listRes[r_id])):
                         listRes[r_id].setVehicle(veh)
                         # print("assigned - 1")
                         found = True
@@ -278,50 +260,50 @@ def requestFiller(dataList):
                 if not found:
                     random.shuffle(listRes[r_id].zone.vehNeigh)
                     for veh in listRes[r_id].zone.vehNeigh:
-                        if(checkCarAvailable(veh, dataList, listRes[r_id])):
+                        if(checkCarAvailable(veh, listRes, listRes[r_id])):
                             listRes[r_id].setVehicle(veh)
                             # print("assigned - 2")
                             break
 
-    return [listZone, listRes, dataList[2]]
+    return listZone, listRes
 
 # ---------------------- Random Functies ---------------------- #
-def randomChange(dataList):
+def randomChange(listRes, listZone, listVeh):
     i = random.randrange(4)
     if (i < 2):
         # Unassign een request
-        dataList = requestUnassignment(dataList)
-        dataList = requestFiller(dataList)
-    if (i >= 2):
-        # Assign wagen aan andere zone
-        dataList = zoneReassignment(dataList)
-        dataList = requestFiller(dataList)
-    return True, dataList
+        listZone, listRes = requestUnassignment(listZone, listRes)
+        listZone, listRes = requestFiller(listZone, listRes)
+    # if (i >= 2):
+    #     # Assign wagen aan andere zone
+    #     listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
+    #     listZone, listRes = requestFiller(listZone, listRes)
+    return True, listRes, listZone, listVeh
 
-def zoneReassignment(dataList):
-    listRes = dataList[1]
-    listVeh = dataList[2]
-
+def zoneReassignment(listZone, listRes, listVeh):
     veh = listVeh[random.randrange(0, len(listVeh))]
 
     for res in listRes:
         if res.assigned_veh == veh:
             res.setVehicle(None)
+            # print(str(res))
 
-    dataList = randomAssignment(dataList, [veh])
+    # print(str(veh.zone))
+    listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh, [veh])
 
-    return dataList
+    # print(str(veh))
+    # print(str(veh.zone))
 
-def requestUnassignment(dataList):
-    listZone = dataList[0]
-    listRes = dataList[1]
 
+    return listZone, listRes, listVeh
+
+def requestUnassignment(listZone, listRes):
     request = listRes[random.randrange(0, len(listRes))]
     request.setVehicle(None)
-    return [listZone, listRes, dataList[2]]
+    return listZone, listRes
 
 # ---------------------- SOLVER ---------------------- #
-def solver(queue: multiprocessing.Queue, dataList, seed):
+def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed):
 
     total_best_cost = None
     total_best_zone = None
@@ -337,16 +319,23 @@ def solver(queue: multiprocessing.Queue, dataList, seed):
 
     while not stop:
 
-        # Backup maken waar uiteindelijk de best oplossing in zal komen
-        dataBackup = copy.deepcopy(dataList)
+        # Backups maken waar uiteindelijk de best oplossing in zal komen
+        zoneBackup = listZone
+        resBackup = copy.deepcopy(listRes)
+        vehBackup = copy.deepcopy(listVeh)
+
+        for res in resBackup:
+            res.zone = getItem(str(res.zone), zoneBackup)
+            for id, veh in enumerate(res.vehicles):
+                res.vehicles[id] = getItem(str(veh), vehBackup)
 
         # Maak een initiële oplossing (volledig random)
-        dataList = randomAssignment(dataList)
+        listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
 
         # initiële random toewijzing van requests
-        dataList = requestFiller(dataList)
+        listZone, listRes = requestFiller(listZone, listRes)
 
-        best_cost = calculateCost(dataList)
+        best_cost = calculateCost(listRes)
 
         T = MAX_T
 
@@ -355,19 +344,33 @@ def solver(queue: multiprocessing.Queue, dataList, seed):
             while T >= MIN_T:
                 for it in range(MAX_ITERATIONS):
                     # Voer een verandering uit
-                    changeWorked,dataList = randomChange(dataList)
+                    changeWorked, listRes, listZone, listVeh = randomChange(listRes, listZone, listVeh)
                     if(changeWorked):
-                        current_cost = calculateCost(dataList)
+                        current_cost = calculateCost(listRes)
                         dE = current_cost - best_cost
 
                         # Als de nieuwe oplossing beter is of gelukt heeft werken we er op verder
                         if (dE <= 0) or (math.exp((-dE)/T) > random.random()):
                             best_cost = current_cost
-                            dataBackup = copy.deepcopy(dataList)
+                            zoneBackup = listZone
+                            resBackup = copy.deepcopy(listRes)
+                            vehBackup = copy.deepcopy(listVeh)
+
+                            # for res in resBackup:
+                            #     res.zone = getItem(str(res.zone), zoneBackup)
+                            #     for id, veh in enumerate(res.vehicles):
+                            #         res.vehicles[id] = getItem(str(veh), vehBackup)
 
                         # Als er geen verbetering is en de oplossing heeft geen geluk, zullen we verdergaan van onze laatster beste oplossing
                         else:
-                            dataList = copy.deepcopy(dataBackup)
+                            listZone = zoneBackup
+                            listRes = copy.deepcopy(resBackup)
+                            listVeh = copy.deepcopy(vehBackup)
+
+                            # for res in listRes:
+                            #     res.zone = getItem(str(res.zone), listZone)
+                            #     for id, veh in enumerate(res.vehicles):
+                            #         res.vehicles[id] = getItem(str(veh), listVeh)
 
                 T = ALPHA * T
 
@@ -377,9 +380,11 @@ def solver(queue: multiprocessing.Queue, dataList, seed):
         if (total_best_cost is None or best_cost < total_best_cost):
             print("verbetering van " + str(total_best_cost) + " naar " + str(best_cost))
             total_best_cost = best_cost
-            best_data = copy.deepcopy(dataList)
+            total_best_res = copy.deepcopy(listRes)
+            total_best_zone = copy.deepcopy(listZone)
+            total_best_veh = copy.deepcopy(listVeh)
 
-            queue.put((total_best_cost, dataList))
+            queue.put((total_best_cost, total_best_res, total_best_zone, total_best_veh))
 
 # ---------------------- MAIN ---------------------- #
 def main():
@@ -399,14 +404,14 @@ def main():
     print("Input file: " + pathIn + "   -----   Output file: " + pathOut + "   -----   Maximum runtime: " + str(max_time) + "   -----   Aantal threads: " + str(max_thread))
 
     # Het inlezen van de inpufile en in een lijst van objecten zetten
-    dataList = readFile(pathIn)
+    listVeh, listZone, listRes = readFile(pathIn)
 
     read_time = time.time() - start_time
     print("Tijd gebruikt om file in te lezen: " + str(read_time) + " sec.")
 
     # Maak een queue voode communicatie met de main en maak de verschillende threads
     queue = multiprocessing.Queue()
-    threads = [multiprocessing.Process(target = solver, args=(queue, dataList, int(sys.argv[4]) * i)) for i in range (max_thread)]
+    threads = [multiprocessing.Process(target = solver, args=(queue, listZone, listRes, listVeh, int(sys.argv[4]) * i)) for i in range (max_thread)]
 
     for t in threads:
         t.start()
@@ -429,10 +434,10 @@ def main():
     solutions = [queue.get() for _ in range(queue.qsize())]
 
     # Bepaal de beste oplossing en output deze
-    best_cost, dataList = min(solutions, key=lambda x: x[0])
+    best_cost, best_listRes, best_listZone, best_listVeh = min(solutions, key=lambda x: x[0])
 
     print(" --------------------- BESTE OPLOSING: " + str(best_cost) + " --------------------- ")
-    writeFile(pathOut, dataList)
+    writeFile(pathOut, best_listVeh, best_listRes)
 
 if __name__ == '__main__':
     main()
