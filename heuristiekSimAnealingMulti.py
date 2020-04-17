@@ -312,15 +312,15 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh):
 
         best_cost = calculateCost(listRes)
 
-        # Backups maken waar uiteindelijk de best oplossing in zal komen
-        zoneBackup = copy.deepcopy(listZone)
-        resBackup = copy.deepcopy(listRes)
-        vehBackup = copy.deepcopy(listVeh)
-
         T = MAX_T
 
         # initiële random toewijzing van requests
         listZone, listRes = requestFiller(listZone, listRes)
+
+        # Backups maken waar uiteindelijk de best oplossing in zal komen
+        zoneBackup = copy.deepcopy(listZone)
+        resBackup = copy.deepcopy(listRes)
+        vehBackup = copy.deepcopy(listVeh)
 
         try:
             # Simulated annealing
@@ -347,7 +347,7 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh):
 
                 T = ALPHA * T
 
-        except (KeyboardInterrupt, TimeoutError):
+        except (KeyboardInterrupt):
             stop = True
 
         print(best_cost)
@@ -360,6 +360,7 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh):
             total_best_veh = copy.deepcopy(listVeh)
 
             queue.put((total_best_cost, total_best_res, total_best_zone, total_best_veh))
+            print("TBC putter" + str(total_best_cost))
 
 # ---------------------- MAIN ---------------------- #
 def main():
@@ -405,17 +406,17 @@ def main():
 
     try:
         time.sleep(sleep_time)
-    except (KeyboardInterrupt, TimeoutError):
+    except (KeyboardInterrupt):
         pass
 
     for t in threads:
         os.kill(t.pid, signal.SIGINT)
 
     # Haal alle oplossingen op
-    solutions = [queue.get() for _ in threads]
+    solutions = [queue.get() for _ in range(queue.qsize())]
 
-    for s in solutions:
-        print(s[0])
+    for id, s in enumerate(solutions):
+        print(str(id) + " --- " + str(s[0]))
 
     # Bepaal de beste oplossing en output deze
     best_cost, best_listRes, best_listZone, best_listVeh = min(solutions, key=lambda x: x[0])
