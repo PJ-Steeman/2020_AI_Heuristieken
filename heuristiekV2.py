@@ -9,10 +9,10 @@ import random
 import copy
 import math
 
-MAX_ITERATIONS = 750
-MAX_T = 1000
-MIN_T = 25
-ALPHA = 0.55
+MAX_ITERATIONS = 1250
+MAX_T = 750
+MIN_T = 20
+ALPHA = 0.5
 
 # ---------------------- Klasses ---------------------- #
 class Zone:
@@ -164,7 +164,7 @@ def writeFile(path, vehicles, reservations):
 
 # ---------------------- Hulp Functies ---------------------- #
 # Geeft een lijst van de wagens in die zone terug
-def getVehicleInZone(zone, listVeh, listZone):
+def getVehicleInZone(zone, listVeh):
     listVehInZone = []
     for veh in listVeh:
         if(veh.zone == str(zone)):
@@ -190,12 +190,12 @@ def checkCarAvailable(veh, listRes, req):
 
     if (str(veh) not in req.vehicles):
         return False
-    vehRange = range(req.start, req.start + req.lenght)
+    vehRange = range(req.start, req.start + req.lenght + 1)
     for fixed in listRes:
         if (str(veh) == fixed.assigned_veh):
             if (req.day != fixed.day):
                 continue
-            fixedRange = range(fixed.start, fixed.start + fixed.lenght)
+            fixedRange = range(fixed.start, fixed.start + fixed.lenght + 1)
             if (len(list(set(vehRange) & set(fixedRange))) > 1):
                 return False
     return True
@@ -208,7 +208,7 @@ def getItem(id, list):
     return None
 # ---------------------- Toewijzings Functies ---------------------- #
 # Geeft aan alle auto's in de randomAssigList een random zone en past de auto lijsten in de zone en zijn buren aan
-def randomAssignment(listZone, listRes, listVeh, randomAssigList = None):
+def randomAssignment(listZone, listVeh, randomAssigList = None):
     if(randomAssigList == None):
         randomAssigList = listVeh
 
@@ -218,15 +218,14 @@ def randomAssignment(listZone, listRes, listVeh, randomAssigList = None):
         # print(str(veh) + " staat in zone " + str(veh.zone))
 
     for zone in listZone:
-        zone.setVeh(getVehicleInZone(zone, listVeh, listRes))
-        # print(getVehicleInZone(zone, listVeh, listRes))
+        zone.setVeh(getVehicleInZone(zone, listVeh))
 
     for zone in listZone:
         zone.setVehNeigh(getVehicleInNeighbour(zone, listZone))
 
     # print(listZone[0].veh + listZone[1].veh + listZone[2].veh)
 
-    return listZone, listRes, listVeh
+    return listZone, listVeh
 
 # Vervult zo veel mogelijk request
 def requestFiller(listZone, listRes, listVeh):
@@ -282,7 +281,7 @@ def zoneReassignment(listZone, listRes, listVeh):
         if str(res.assigned_veh) == str(veh):
             res.setVehicle(None)
 
-    listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh, [veh])
+    listZone, listVeh = randomAssignment(listZone, listVeh, [veh])
 
     return listZone, listRes, listVeh
 
@@ -292,9 +291,14 @@ def requestUnassignment(listZone, listRes):
     return listZone, listRes
 
 # ---------------------- SOLVER ---------------------- #
-def solver(zoneOrig, resOrig, vehOrig, seed, pathOut):
+def solver(listZone, listRes, listVeh, seed, pathOut):
 
     total_best_cost = None
+
+    # Backups maken waar uiteindelijk de best oplossing in zal komen
+    zoneBackup = copy.deepcopy(listZone)
+    resBackup = copy.deepcopy(listRes)
+    vehBackup = copy.deepcopy(listVeh)
 
     if(int(sys.argv[4]) != 0):
         random.seed(seed)
@@ -306,18 +310,12 @@ def solver(zoneOrig, resOrig, vehOrig, seed, pathOut):
     try:
         while not stop:
 
-            # Volledige reset naar de originele waarden (Deepcopy om orig data niet te overschrijven)
-            listZone = copy.deepcopy(zoneOrig)
-            listRes = copy.deepcopy(resOrig)
-            listVeh = copy.deepcopy(vehOrig)
-
-            # Backups maken waar uiteindelijk de best oplossing in zal komen (Deepcopy niet nodig, 1ste run is zoizo een beter oplossing)
-            zoneBackup = listZone
-            resBackup = listRes
-            vehBackup = listVeh
-
             # Maak een initiële oplossing (volledig random)
-            listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
+            listZone, listVeh = randomAssignment(listZone, listVeh)
+
+            # Alle reservaties leegmaken
+            for res in listRes:
+                res.assigned_veh = None
 
             # initiële random toewijzing van requests
             listZone, listRes = requestFiller(listZone, listRes, listVeh)
