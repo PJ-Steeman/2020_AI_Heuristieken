@@ -10,9 +10,9 @@ import copy
 import math
 
 MAX_ITERATIONS = 750
-MAX_T = 750
-MIN_T = 20
-ALPHA = 0.70
+MAX_T = 1000
+MIN_T = 25
+ALPHA = 0.55
 
 # ---------------------- Klasses ---------------------- #
 class Zone:
@@ -292,12 +292,9 @@ def requestUnassignment(listZone, listRes):
     return listZone, listRes
 
 # ---------------------- SOLVER ---------------------- #
-def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed, pathOut):
+def solver(zoneOrig, resOrig, vehOrig, seed, pathOut):
 
     total_best_cost = None
-    total_best_zone = None
-    total_best_res = None
-    total_best_veh = None
 
     if(int(sys.argv[4]) != 0):
         random.seed(seed)
@@ -309,10 +306,15 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed, pathO
     try:
         while not stop:
 
-            # Backups maken waar uiteindelijk de best oplossing in zal komen
-            zoneBackup = copy.deepcopy(listZone)
-            resBackup = copy.deepcopy(listRes)
-            vehBackup = copy.deepcopy(listVeh)
+            # Volledige reset naar de originele waarden (Deepcopy om orig data niet te overschrijven)
+            listZone = copy.deepcopy(zoneOrig)
+            listRes = copy.deepcopy(resOrig)
+            listVeh = copy.deepcopy(vehOrig)
+
+            # Backups maken waar uiteindelijk de best oplossing in zal komen (Deepcopy niet nodig, 1ste run is zoizo een beter oplossing)
+            zoneBackup = listZone
+            resBackup = listRes
+            vehBackup = listVeh
 
             # Maak een initiële oplossing (volledig random)
             listZone, listRes, listVeh = randomAssignment(listZone, listRes, listVeh)
@@ -352,11 +354,8 @@ def solver(queue: multiprocessing.Queue, listZone, listRes, listVeh, seed, pathO
             if (total_best_cost is None or best_cost < total_best_cost):
                 print("verbetering van " + str(total_best_cost) + " naar " + str(best_cost))
                 total_best_cost = best_cost
-                total_best_res = copy.deepcopy(listRes)
-                total_best_zone = copy.deepcopy(listZone)
-                total_best_veh = copy.deepcopy(listVeh)
 
-                writeFile(pathOut, total_best_veh, total_best_res)
+                writeFile(pathOut, listVeh, listRes)
 
     except (KeyboardInterrupt):
         pass
@@ -384,9 +383,8 @@ def main():
     read_time = time.time() - start_time
     print("Tijd gebruikt om file in te lezen: " + str(read_time) + " sec.")
 
-    # Maak een queue voode communicatie met de main en maak de verschillende threads
-    queue = multiprocessing.Queue()
-    threads = [multiprocessing.Process(target = solver, args=(queue, listZone, listRes, listVeh, int(sys.argv[4]) * (i+1), pathOut+str(i))) for i in range (max_thread)]
+    # Maak de verschillende threads
+    threads = [multiprocessing.Process(target = solver, args=(listZone, listRes, listVeh, int(sys.argv[4]) * (i+1), pathOut+str(i))) for i in range (max_thread)]
 
     for t in threads:
         t.start()
