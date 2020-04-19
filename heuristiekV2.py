@@ -295,11 +295,6 @@ def solver(listZone, listRes, listVeh, seed, pathOut):
 
     total_best_cost = None
 
-    # Backups maken waar uiteindelijk de best oplossing in zal komen
-    zoneBackup = copy.deepcopy(listZone)
-    resBackup = copy.deepcopy(listRes)
-    vehBackup = copy.deepcopy(listVeh)
-
     if(int(sys.argv[4]) != 0):
         random.seed(seed)
     else:
@@ -319,6 +314,11 @@ def solver(listZone, listRes, listVeh, seed, pathOut):
 
             # initiële random toewijzing van requests
             listZone, listRes = requestFiller(listZone, listRes, listVeh)
+
+            # Backups maken waar uiteindelijk de best oplossing in zal komen
+            zoneBackup = copy.deepcopy(listZone)
+            resBackup = copy.deepcopy(listRes)
+            vehBackup = copy.deepcopy(listVeh)
 
             best_cost = calculateCost(listRes, listVeh)
 
