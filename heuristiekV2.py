@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Jelle Caerlen, Kwinten Vanlathem en Pieter-Jan Steeman
 
 import sys
@@ -9,10 +10,10 @@ import random
 import copy
 import math
 
-MAX_ITERATIONS = 2500
-MAX_T = 1500
-MIN_T = 25
-ALPHA = 0.60
+MAX_ITERATIONS = 2000
+MAX_T = 1000
+MIN_T = 15
+ALPHA = 0.6
 
 # ---------------------- Klasses ---------------------- #
 class Zone:
@@ -278,7 +279,7 @@ def randomChange(listRes, listZone, listVeh):
         worked, listZone, listRes, listVeh = requestFromNeigh(listZone, listRes, listVeh)
         listZone, listRes = requestFiller(listZone, listRes, listVeh)
         return worked, listRes, listZone, listVeh
-    if (i > 3):
+    else:
         # Assign wagen aan andere zone
         listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
         listZone, listRes = requestFiller(listZone, listRes, listVeh)
@@ -459,11 +460,11 @@ def main():
                 os.remove(file)
             except:
                 pass
+        print(" --------------------- BESTE OPLOSING: " + str(min(scoreList)) + " --------------------- ")
     except:
         print("Het programma had niet genoeg tijd om een optimale oplossing te vinden. Verhoog de maximum tijd of verlaag het aantal iteraties.")
         pass
 
-    print(" --------------------- BESTE OPLOSING: " + str(min(scoreList)) + " --------------------- ")
     print(" --------------------- TOTALE DUUR: " + str(time.time() - start_time) + " --------------------- ")
 
 if __name__ == '__main__':
