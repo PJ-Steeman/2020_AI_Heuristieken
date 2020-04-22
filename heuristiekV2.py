@@ -9,10 +9,10 @@ import random
 import copy
 import math
 
-MAX_ITERATIONS = 2000
-MAX_T = 1000
-MIN_T = 50
-ALPHA = 0.4
+MAX_ITERATIONS = 2500
+MAX_T = 1500
+MIN_T = 25
+ALPHA = 0.60
 
 # ---------------------- Klasses ---------------------- #
 class Zone:
@@ -437,28 +437,31 @@ def main():
         os.kill(t.pid, signal.SIGINT)
 
     # Haal alle oplossingen op
-
-    fileList = [pathOut+str(i) for i in range(max_thread)]
-    scoreList = []
-
-    for f in fileList:
-        file = open(f)
-        scoreList.append(int(file.readline().rstrip("\n\r")))
-        file.close()
-
-    print("rename: " + fileList[scoreList.index(min(scoreList))])
     try:
-        os.remove(pathOut)
-    except:
-        pass
-    os.rename(fileList[scoreList.index(min(scoreList))], pathOut)
+        fileList = [pathOut+str(i) for i in range(max_thread)]
+        scoreList = []
 
-    for file in fileList:
-        print("remove: " + file)
+        for f in fileList:
+            file = open(f)
+            scoreList.append(int(file.readline().rstrip("\n\r")))
+            file.close()
+
+        print("rename: " + fileList[scoreList.index(min(scoreList))])
         try:
-            os.remove(file)
+            os.remove(pathOut)
         except:
             pass
+        os.rename(fileList[scoreList.index(min(scoreList))], pathOut)
+
+        for file in fileList:
+            print("remove: " + file)
+            try:
+                os.remove(file)
+            except:
+                pass
+    except:
+        print("Het programma had niet genoeg tijd om een optimale oplossing te vinden. Verhoog de maximum tijd of verlaag het aantal iteraties.")
+        pass
 
     print(" --------------------- BESTE OPLOSING: " + str(min(scoreList)) + " --------------------- ")
     print(" --------------------- TOTALE DUUR: " + str(time.time() - start_time) + " --------------------- ")
