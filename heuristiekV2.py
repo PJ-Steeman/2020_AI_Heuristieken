@@ -383,7 +383,6 @@ def solver(listZone, listRes, listVeh, seed, pathOut):
                             listVeh = copy.deepcopy(vehBackup)
 
                 T = ALPHA * T
-                print(T)
 
             if (total_best_cost is None or best_cost < total_best_cost):
                 print("verbetering van " + str(total_best_cost) + " naar " + str(best_cost))
