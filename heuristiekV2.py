@@ -9,10 +9,10 @@ import random
 import copy
 import math
 
-MAX_ITERATIONS = 1250
-MAX_T = 750
-MIN_T = 20
-ALPHA = 0.5
+MAX_ITERATIONS = 2000
+MAX_T = 1000
+MIN_T = 50
+ALPHA = 0.4
 
 # ---------------------- Klasses ---------------------- #
 class Zone:
@@ -213,17 +213,13 @@ def randomAssignment(listZone, listVeh, randomAssigList = None):
         randomAssigList = listVeh
 
     for veh in randomAssigList:
-        vehFromList = getItem(str(veh), listVeh)
-        vehFromList.setZone(str(listZone[random.randrange(0, len(listZone))]))
-        # print(str(veh) + " staat in zone " + str(veh.zone))
+        getItem(str(veh), listVeh).setZone(str(listZone[random.randrange(0, len(listZone))]))
 
     for zone in listZone:
         zone.setVeh(getVehicleInZone(zone, listVeh))
 
     for zone in listZone:
         zone.setVehNeigh(getVehicleInNeighbour(zone, listZone))
-
-    # print(listZone[0].veh + listZone[1].veh + listZone[2].veh)
 
     return listZone, listVeh
 
@@ -239,13 +235,12 @@ def requestFiller(listZone, listRes, listVeh):
         if listRes[r_id].assigned_veh == None:
 
             # Kijk eerst of er nog een auto binnen de zone vrij is
-            # print(getItem(listRes[r_id].zone, listZone).veh)
             if(len(getItem(listRes[r_id].zone, listZone).veh) != 0):
                 random.shuffle(getItem(listRes[r_id].zone, listZone).veh)
                 for veh in getItem(listRes[r_id].zone, listZone).veh:
                     if(checkCarAvailable(veh, listRes, listRes[r_id])):
                         listRes[r_id].setVehicle(str(veh))
-                        # print("assigned - 1")
+
                         found = True
                         break
 
@@ -256,23 +251,38 @@ def requestFiller(listZone, listRes, listVeh):
                     for veh in getItem(listRes[r_id].zone, listZone).vehNeigh:
                         if(checkCarAvailable(veh, listRes, listRes[r_id])):
                             listRes[r_id].setVehicle(str(veh))
-                            # print("assigned - 2")
+
                             break
 
     return listZone, listRes
 
 # ---------------------- Random Functies ---------------------- #
 def randomChange(listRes, listZone, listVeh):
-    i = random.randrange(4)
+    i = random.randrange(6)
     if (i < 2):
-        # Unassign een request
+        # Unassign een request en reassign het ergens random
         listZone, listRes = requestUnassignment(listZone, listRes)
         listZone, listRes = requestFiller(listZone, listRes, listVeh)
-    if (i >= 2):
+        return True, listRes, listZone, listVeh
+    if (i == 2):
+        # Unassign een request
+        listZone, listRes = requestUnassignment(listZone, listRes)
+        return True, listRes, listZone, listVeh
+    if (i == 3):
+        # Assign een request naar een van zijn neighbours
+        worked, listZone, listRes, listVeh = requestToNeigh(listZone, listRes, listVeh)
+        listZone, listRes = requestFiller(listZone, listRes, listVeh)
+        return worked, listRes, listZone, listVeh
+    if (i == 4):
+        # Assign een request uit een van zijn neighbours naar zichzelf
+        worked, listZone, listRes, listVeh = requestFromNeigh(listZone, listRes, listVeh)
+        listZone, listRes = requestFiller(listZone, listRes, listVeh)
+        return worked, listRes, listZone, listVeh
+    if (i > 3):
         # Assign wagen aan andere zone
         listZone, listRes, listVeh = zoneReassignment(listZone, listRes, listVeh)
         listZone, listRes = requestFiller(listZone, listRes, listVeh)
-    return True, listRes, listZone, listVeh
+        return True, listRes, listZone, listVeh
 
 def zoneReassignment(listZone, listRes, listVeh):
     veh = listVeh[random.randrange(0, len(listVeh))]
@@ -289,6 +299,31 @@ def requestUnassignment(listZone, listRes):
     request = listRes[random.randrange(0, len(listRes))]
     request.setVehicle(None)
     return listZone, listRes
+
+def requestToNeigh(listZone, listRes, listVeh):
+    request = listRes[random.randrange(0, len(listRes))]
+
+    # Bepaal een random neighbour
+    if(len(getItem(request.zone, listZone).vehNeigh) != 0):
+        random.shuffle(getItem(request.zone, listZone).vehNeigh)
+        # Ga alle neighbour voertuigen af en probeer er een te assignen
+        for veh in getItem(request.zone, listZone).vehNeigh:
+            if(checkCarAvailable(veh, listRes, request)):
+                request.setVehicle(str(veh))
+                return True, listZone, listRes, listVeh
+    return False, listZone, listRes, listVeh
+
+def requestFromNeigh(listZone, listRes, listVeh):
+    request = listRes[random.randrange(0, len(listRes))]
+
+    # Kijk eerst of er nog een auto binnen de zone vrij is en probeer er aan te assignen
+    if(len(getItem(request.zone, listZone).veh) != 0):
+        random.shuffle(getItem(request.zone, listZone).veh)
+        for veh in getItem(request.zone, listZone).veh:
+            if(checkCarAvailable(veh, listRes, request)):
+                request.setVehicle(str(veh))
+                return True, listZone, listRes, listVeh
+    return False, listZone, listRes, listVeh
 
 # ---------------------- SOLVER ---------------------- #
 def solver(listZone, listRes, listVeh, seed, pathOut):
@@ -373,7 +408,7 @@ def main():
     else:
         max_thread = 1
 
-    print("Input file: " + pathIn + "   -----   Output file: " + pathOut + "   -----   Maximum runtime: " + str(max_time) + "   -----   Aantal threads: " + str(max_thread))
+    print("Input file: " + pathIn + "   -   Output file: " + pathOut + "   -   Maximum runtime: " + str(max_time) + "   -   Aantal threads: " + str(max_thread))
 
     # Het inlezen van de inpufile en in een lijst van objecten zetten
     listVeh, listZone, listRes = readFile(pathIn)
